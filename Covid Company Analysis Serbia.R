@@ -14,8 +14,7 @@ library(lmtest)    # Robust standard errors
 library(sandwich)  # HAC standard errors
 
 # Set working directory and load data
-#setwd("C:/path/to/your/data")
-setwd("C:/SYNC/OneDrive - Jugodata/Doktorat/Danko papers/Financial Resilience to the Economic Shock of COVID")
+setwd("C:/path/to/your/data")
 data <- read_excel("data.xlsx", sheet = "Data", col_types = c("numeric", "numeric", "text", rep("numeric", 399)))
 # Validate data structure
 cat("\nData dimensions:", dim(data), "\n")
@@ -287,4 +286,5 @@ print(summary_table)
 write.csv(summary_table, "model_summary_results.csv", row.names = FALSE)
 
 cat("\n\nANALYSIS COMPLETE")
+
 cat("\nResults saved in 'results' object\n")
