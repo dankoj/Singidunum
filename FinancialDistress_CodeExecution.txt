@@ -1,0 +1,780 @@
+=======================================================================
+SERBIAN FINANCIAL DATA LOADER
+=======================================================================
+
+Configuration:
+  Data file: data.xlsx
+  Mapping file: AOP_Mapping.xlsx
+  Transition year: 2020 (OLD <= 2020, NEW >= 2021)
+
+  All required files found ✓
+
+Loading mapping file...
+  Total mapping rows: 120
+  Unique variables: 112
+  Simple mappings (1:1): 103
+  Aggregation mappings: 4
+  NEW-only codes: 5
+
+Loading raw data file...
+
+Excluded invalid MBs: 17320122
+  Rows before: 35427, after: 35416 (removed: 11)
+  Firms before: 3801, after: 3800 (removed: 1)
+
+MB converted to 8-digit zero-padded character format
+  Example MBs: 06000525, 06382266, 07852398
+
+Data dimensions: 35416 402 
+Column names check: TRUE 
+Year range: 2013 2023 
+Unique firms: 3800
+
+Year distribution:
+  2013: 3596 observations (OLD format)
+  2014: 3596 observations (OLD format)
+  2015: 3415 observations (OLD format)
+  2016: 3244 observations (OLD format)
+  2017: 3196 observations (OLD format)
+  2018: 3112 observations (OLD format)
+  2019: 3145 observations (OLD format)
+  2020: 3095 observations (OLD format)
+  2021: 2986 observations (NEW format)
+  2022: 2986 observations (NEW format)
+  2023: 3045 observations (NEW format)
+
+Harmonizing data across regulatory periods...
+
+=======================================================================
+VALIDATION SUMMARY
+=======================================================================
+
+Data loaded:
+  Rows: 35416
+  Columns: 115 (3 identifiers + 112 financial variables)
+  MB format: character, 8 digits (zero-padded)
+
+  All variables have non-zero values ✓
+
+  NEW-only variables (expected NA/0 for years <= 2020):
+    - monthsOfOperation: 26399 NA, 0 non-zero in OLD period
+    - ownershipIndicator: 26399 NA, 0 non-zero in OLD period
+    - foreignInvestorsCount: 26399 NA, 0 non-zero in OLD period
+    - foreignInvestorsMajor: 26399 NA, 0 non-zero in OLD period
+    - avgEmployees: 26399 NA, 0 non-zero in OLD period
+
+  Key variable summaries:
+    totalAssets: min=0, median=618633, mean=3247351, max=1067605997
+    totalEquity: min=0, median=252998, mean=1650987, max=694404180
+    operatingRevenue: min=0, median=521132, mean=2186690, max=499456301
+    profitForPeriod: min=0, median=12554, mean=137950, max=114350215
+
+  Balance sheet check (Assets = Equity + Liabilities):
+    Max difference: 0
+    Mean difference: 0.00
+    Exact match rate: 100.00%
+
+=======================================================================
+DATA LOADING COMPLETE
+=======================================================================
+
+Data stored in: data
+Dimensions: 35416 rows x 115 columns
+
+Variable categories:
+  - Identifiers: year, mb (8-digit char), name
+  - Balance Sheet: 43 variables
+  - Income Statement: 37 variables
+  - Cash Flow: 16 variables
+  - Statistical: 5 variables
+
+--- Inflation Adjustment ---
+  Added real (2010 RSD) variables:
+    - revenue_real_2010: Real operating revenue
+    - assets_real_2010: Real total assets
+    - equity_real_2010: Real total equity
+    - profit_real_2010: Real profit for period
+
+  Inflation impact example (mean values):
+    2013: Nominal revenue = 1623798, Real = 1263656 (deflator = 1.285)
+    2023: Nominal revenue = 3459334, Real = 1805498 (deflator = 1.916)
+
+--- COVID Period Indicator ---
+  Added covid_period factor (Pre-COVID as baseline):
+    Pre: 6257 firm-years
+    Covid: 6081 firm-years
+    Post: 6031 firm-years
+  Note: Years 2013-2017 have covid_period = NA (outside analysis window)
+
+--- Factor Conversions ---
+  Added ownership_factor (from ownershipIndicator):
+    Socialistic: 478 firm-years
+    Private: 7293 firm-years
+    Cooperative: 251 firm-years
+    Mixed: 292 firm-years
+    Government: 700 firm-years
+
+Intermediate objects removed. Final object:
+  - data: harmonized financial data
+
+Final dimensions: 35416 rows x 121 columns
+
+Added variables summary:
+  - Inflation-adjusted: revenue_real_2010, assets_real_2010, equity_real_2010, profit_real_2010
+  - COVID period: covid_period (Pre/Covid/Post factor)
+  - Ownership factor: ownership_factor
+
+Note: Corporate structure variables (is_parent, group_role, etc.) are added in classify_companies.R
+Size Classification Thresholds (Serbian Law on Accounting):
+  Micro:  <= 10 employees, <= 700k EUR revenue, <= 350k EUR assets
+  Small:  <= 50 employees, <= 8M EUR revenue, <= 4M EUR assets
+  Medium: <= 250 employees, <= 40M EUR revenue, <= 20M EUR assets
+  Large:  > Medium thresholds on at least 2 criteria
+
+Required files validated ✓
+  - MB_Delatnost.xlsx
+  - subsidiaries.xlsx
+
+Loading sector classification file...
+  Loaded 3802 company sector records
+  Companies with blank Delatnost (liquidated): 13
+  Unique Sections: 19
+  MB format: character, 8 digits (zero-padded)
+
+--- Company Classification ---
+
+Firms with 2021+ data (Official classification): 3092
+Firms without 2021+ data (Proxy classification): 708
+    Firms classified (official): 3092
+    Firms classified (proxy): 708
+
+Classified 3800 companies:
+  Official method: 3092
+  Proxy method: 708
+
+--- FewEmployees Indicator ---
+  Calculating FewEmployees indicator...
+    FewEmployees calculated for 3800 firms
+    TRUE: 225, FALSE: 3575, NA: 0
+    Total firms: 3800 (Official: 3092, Proxy: 708)
+    FewEmployees: TRUE=225, FALSE=3575, NA=0
+
+--- Is_Potential_SPV Indicator ---
+  P75 Assets threshold (2023): 2444879 (000 RSD)
+  Firms flagged as potential SPV: 26 (0.7%)
+
+Merging sector classification...
+
+--- Corporate Group Structure ---
+  2023 data: 683 parent companies
+  2014 data: 662 parent companies, 1648 Serbian subsidiaries
+  In our dataset: 636 parents (2014), 426 parents (2023), 462 subsidiaries
+  Group roles:
+    Independent: 2589 firms (68.1%)
+    Subsidiary: 432 firms (11.4%)
+    Parent: 756 firms (19.9%)
+    Both: 23 firms (0.6%)
+  Note: 23 firms are BOTH parent and subsidiary (intermediate holdings)
+
+--- Checking for firms with missing data after classification ---
+
+Firms with missing SIZE: 0
+Firms with missing OWNERSHIP: 708 (expected for proxy-classified firms)
+Firms with missing FOREIGN: 708 (expected for proxy-classified firms)
+
+Calculating Proxy size (revenue-based) for each year...
+  Added 11 year columns (Size_2013 to Size_2023)
+
+--- Converting to Factors ---
+  Size: Medium (baseline), Micro, Small, Large
+    Rationale: Micro firms have survivorship bias; Medium is policy-relevant
+  Ownership: Private (baseline), Socialistic, Cooperative, Mixed, Government
+  SizeMethod: Official (baseline), Proxy
+  Foreign: No (baseline), Yes
+
+--- Zero Employees Analysis (2021+ data only) ---
+
+Firms with few employees (≤2) in ALL years: 225 (5.9%)
+
+Few employees by size category:
+  Medium: 9 / 1316 (0.7%)
+  Micro: 181 / 718 (25.2%)
+  Small: 33 / 1223 (2.7%)
+  Large: 2 / 543 (0.4%)
+
+Sample firms with few employees:
+  [06000525] BOMEX EXPORT IMPORT PREDUZE?E ZA PROIZVODNJU ZASTUPANJE (Micro)
+  [06011101] KOTEKS PREDUZE?E ZA PROIZVODNJU, TRGOVINU I USLUGE DOO  (Micro)
+  [06242103] AKCIONARSKO DRUŠTVO ZA PROMET I USLUGE KOMPANIJA MIŠI?  (Micro)
+  [06284817] AKCIONARSKO DRUŠTVO ZA UGOSTITELJSTVO USLUGE TURIZAM PR (Micro)
+  [06419429] BVS COMMERCE SYSTEM DOO DRUŠTVO ZA SPOLJNU I UNUTRAŠNJU (Micro)
+  [06419461] ELEKTROVEZE-PROIZVODNJA AD, BEOGRAD (ZVEZDARA) (Micro)
+  [06436501] LUXOR CO PREDUZE?E ZA PROIZVODNJU TRGOVINU I USLUGE DOO (Micro)
+  [06577938] DRUŠTVO SA OGRANI?ENOM ODGOVORNOŠ?U ŽIVKOVI?, NEGOTIN - (Micro)
+  [06673244] AKCIONARSKO DRUŠTVO ZA TRGOVINSKE I DRUGE POSLOVE METAL (Micro)
+  [06706312] USLUŽNO I PROMETNO DRUŠTVO ŠOLAJA DOO, BEOGRAD (ZEMUN) (Micro)
+
+=======================================================================
+COMPANY CLASSIFICATION SUMMARY
+=======================================================================
+
+Total companies classified: 3800
+  Official method (2021+ data): 3092 (81.4%)
+  Proxy method (pre-2021 exits): 708 (18.6%)
+
+Size distribution (all firms):
+  Medium: 1316 total (Official: 1195, Proxy: 121)
+  Micro: 718 total (Official: 515, Proxy: 203)
+  Small: 1223 total (Official: 879, Proxy: 344)
+  Large: 543 total (Official: 503, Proxy: 40)
+
+Ownership distribution (Official method only):
+  Private: 2504 companies (81.0%)
+  Socialistic: 133 companies (4.3%)
+  Cooperative: 99 companies (3.2%)
+  Mixed: 107 companies (3.5%)
+  Government: 249 companies (8.1%)
+
+Foreign ownership (Official method only):
+  Foreign=No: 2360 companies (76.3%)
+  Foreign=Yes: 732 companies (23.7%)
+
+Few employees flag (all firms):
+  FewEmployees=No: 3575 companies (94.1%)
+  FewEmployees=Yes: 225 companies (5.9%)
+
+Is_Potential_SPV flag (all firms):
+  Is_Potential_SPV=No: 3774 companies (99.3%)
+  Is_Potential_SPV=Yes: 26 companies (0.7%)
+
+Liquidation/Bankruptcy status (all firms):
+  In liquidation/bankruptcy=No: 3501 companies (92.1%)
+  In liquidation/bankruptcy=Yes: 299 companies (7.9%)
+
+Sector (NACE Section) distribution (active firms only):
+  Section C: 1005 companies (28.7%)
+  Section G: 937 companies (26.8%)
+  Section F: 329 companies (9.4%)
+  Section A: 225 companies (6.4%)
+  Section M: 174 companies (5.0%)
+  Section H: 171 companies (4.9%)
+  Section E: 131 companies (3.7%)
+  Section L: 110 companies (3.1%)
+  Section J: 102 companies (2.9%)
+  Section D: 68 companies (1.9%)
+  Section I: 68 companies (1.9%)
+  Section N: 67 companies (1.9%)
+  Section K: 38 companies (1.1%)
+  Section B: 31 companies (0.9%)
+  Section R: 23 companies (0.7%)
+  Section S: 8 companies (0.2%)
+  Section P: 7 companies (0.2%)
+  Section Q: 6 companies (0.2%)
+  Section O: 1 companies (0.0%)
+
+=======================================================================
+CLASSIFICATION COMPLETE
+=======================================================================
+
+Output tables:
+  - df_company: Company characteristics (Size, Ownership, Foreign, Liquidation, Sector, Corporate Structure)
+  - eur_rsd: EUR/RSD exchange rate table (retained for reference)
+
+df_company columns:
+  - ID: Company registry number (MB) - 8-digit zero-padded character
+  - Name: Company legal name
+  - Size: Factor (Medium, Micro, Small, Large), baseline=Medium
+      Rationale: Micro firms have survivorship bias; Medium is policy-relevant
+  - SizeNum: Numeric version (1-4) for ordered regression models
+  - SizeLabel: Character version of Size (legacy compatibility)
+  - SizeMethod: Factor (Official, Proxy), baseline=Official
+  - Ownership: Factor (Private, Socialistic, Cooperative, Mixed, Government), baseline=Private
+  - OwnershipNum: Numeric version (1-5) for reference
+  - OwnershipLabel: Character version of Ownership (legacy compatibility)
+  - Foreign: Factor (No, Yes), baseline=No (Official only)
+  - FewEmployees: Logical - TRUE if ≤2 employees in ALL years with data
+      2021+: avgEmployees <= 2 (from statistical annex AOP9005)
+      2013-2020: personnelCosts <= 3M RSD (validated proxy, Spearman ρ=0.93)
+  - Is_Potential_SPV: Logical - TRUE if FewEmployees AND totalAssets > P75
+      Identifies asset-holding SPVs for exclusion from main analysis
+  - Liquidation: Logical - TRUE if in bankruptcy/liquidation
+  - Section: NACE Section (A-S)
+  - Division: NACE Division (2-digit)
+  - Group: NACE Group (3-digit with decimal)
+  - Class: NACE Class (4-digit with decimal)
+  - Size_2013...Size_2023: Numeric proxy size for each year (1-4, revenue-based)
+  Corporate Structure (from subsidiaries.xlsx):
+  - is_parent_2014, is_parent_2023, is_parent: Logical parent flags
+  - is_subsidiary_2014: Logical subsidiary flag
+  - n_subsidiaries_2014, n_subsidiaries_2023: Integer subsidiary counts
+  - parent_mb_2014: Character - parent's MB for subsidiaries
+  - group_id_2014: Character - corporate group ID for clustering
+  - group_role: Factor (Independent/Subsidiary/Parent/Both), baseline=Independent
+
+--- Variables Available for Future Research Extensions ---
+  - Foreign: Test if foreign-owned firms have different resilience mechanisms
+  - is_parent / is_subsidiary_2014: Test internal capital market effects
+  - group_role: Control for corporate group membership effects
+  - group_id_2014: Cluster standard errors by corporate group
+  - Is_Potential_SPV: Sensitivity analysis excluding asset-holding vehicles
+=======================================================================
+DATA PREPARATION & INDICATOR CALCULATION (v4.0)
+=======================================================================
+
+Input: 35416 firm-years from 'data', 3800 firms from 'df_company'
+
+--- Step 1: Merging and Cleaning ---
+  Merged dataset: 35416 observations
+  Observations with zero assets: 33 (0.1%)
+
+--- Step 2: Calculating Financial Ratios ---
+
+--- Step 3: Winsorising Financial Ratios (1%/99%) ---
+  Winsorisation impact (observations changed):
+    Current_Ratio: 708 (2.00%)
+    Debt_to_Equity: 624 (1.76%)
+    ROA: 708 (2.00%)
+
+  Winsorisation bounds (1st and 99th percentiles):
+    Current_Ratio: [0.013, 43.680]
+    Debt_to_Equity: [0.011, 43.381]
+    ROA: [-0.9578, 0.4122]
+
+  Valid Current Ratio: 35338 | Valid ROA: 35383 | Valid Operating Margin: 34237
+
+--- Step 4: Calculating Altman Z-Score ---
+  Z-Score: N=35383, Mean=3.65, Median=3.40, SD=10.39
+  Risk Zone distribution:
+    Distress: 9755 (27.6%)
+    Grey: 5135 (14.5%)
+    Safe: 20493 (57.9%)
+
+--- Step 5: Detecting Implicit Subsidies ---
+  Firms with pre-COVID baseline: 3652
+  Sectors with baseline: 19
+  COVID period (2020+): 12112 observations
+  Detected as subsidized: 2216 (18.3%)
+  Zombie firms (subsidized + distressed): 538
+
+--- Step 6: Applying Sample Exclusions ---
+  1. Liquidation firms: -2126 firm-years
+  2. |Debt_to_Equity| > 100: -137 firm-years
+  3. Current_Ratio > 100: -124 firm-years
+  4. Is_Potential_SPV = TRUE: -151 firm-years
+  5. Micro firms: -4296 firm-years
+
+  TOTAL EXCLUDED: 6834 firm-years (19.3%)
+  CLEAN SAMPLE: 28582 firm-years (80.7%)
+  Unique firms: 3800 → 2950 (77.6% retained)
+
+  Exclusion summary saved to 'EXCLUSION_SUMMARY'
+
+--- Step 7: Finalising Dataset ---
+Final dataset 'df_final': 28582 rows x 57 columns
+
+=======================================================================
+PREPARATION COMPLETE - VALIDATION SUMMARY
+=======================================================================
+
+--- Sample Composition (Clean Sample) ---
+  Total firm-years: 28582
+  Unique firms: 2950
+  Years covered: 2013 - 2023
+
+Size distribution (clean sample, 2023):
+  Medium: 1177 (46.8%)
+  Small: 841 (33.4%)
+  Large: 498 (19.8%)
+
+Z-Score by Size (2023, clean sample):
+# A tibble: 3 × 4
+  Size       N Mean_Z Pct_Distress
+  <fct>  <int>  <dbl>        <dbl>
+1 Medium  1177   5.7          15  
+2 Small    840   6.23         19.6
+3 Large    498   3.94         19.5
+
+Winsorised Ratio Summary (2023, Medians):
+  Current_Ratio: 1.576
+  Debt_to_Equity: 0.789
+  ROA: 0.0325
+  Operating_Margin: 0.0438
+
+Extreme Margin Flag (for robustness, not excluded):
+  |Margin| > 100%: 838 firm-years (2.9% of clean sample)
+
+Subsidy Detection by Year (clean sample):
+# A tibble: 4 × 4
+   year     N Subsidized Zombies
+  <dbl> <int>      <int>   <int>
+1  2020  2524        261      73
+2  2021  2472        538     115
+3  2022  2474        547     106
+4  2023  2516        584     127
+
+=======================================================================
+EXCLUSION SUMMARY
+=======================================================================
+                Criterion FirmYears Pct_of_Original
+1  Liquidation/Bankruptcy      2126            6.00
+2  |Debt_to_Equity| > 100       137            0.39
+3     Current_Ratio > 100       124            0.35
+4 Is_Potential_SPV = TRUE       151            0.43
+5             Micro firms      4296           12.13
+6          TOTAL EXCLUDED      6834           19.30
+7            CLEAN SAMPLE     28582           80.70
+
+=======================================================================
+OUTPUT OBJECTS
+=======================================================================
+  df_final: Clean analysis sample (exclusions applied, ratios winsorised)
+  df_full_prefilter: Complete sample before exclusions (for reference)
+  EXCLUSION_SUMMARY: Documentation of filtering criteria
+
+Winsorisation applied to (1%/99%):
+  - Current_Ratio, Quick_Ratio, Cash_Ratio
+  - Debt_to_Equity, Debt_to_Assets
+  - ROA, ROE
+  - Operating_Margin, Net_Margin, EBITDA_Margin
+  - Asset_Turnover, Equity_Ratio
+
+Output: 'df_final' ready for analysis
+
+--- Pipeline complete. df_final available. ---
+
+--- Building analysis panels ---
+  df_ML: 18183 firm-years, 1816 firms
+  df_SML: 28582 firm-years, 2950 firms
+  GDP growth rates loaded (2013-2023)
+
+--- Building episode sets ---
+  baseline:     609 episodes (1026 all, 417 left-cens), 1449 pp obs
+  alt_def:      378 episodes, 627 pp obs
+|========================================================================   | 97% ~0 s remaining       sml_ep:       941 episodes, 2301 pp obs
+|=========================================================================  | 98% ~0 s remaining       baseline_lc:  1026 episodes (incl. left-censored), 3513 pp obs
+  Building strict-exit episodes...
+    Completed episodes: 411
+    Non-durable exits (Z<1.1 or no data at t+2): 155
+    Durable exits: 256
+  strict_ep:    609 episodes, 1449 pp obs, 256 events (was 411)
+
+--- Sample Selection Summary ---
+
+  Raw APR data:                35,416 firm-years, 3,800 firms
+  After exclusions (df_final): 28582 firm-years, 2950 firms
+  Medium + Large (df_ML):      18183 firm-years, 1816 firms
+  Distress episodes (all):     1026 (750 firms)
+  Left-censored (excluded):    417 (40.6%)
+  Clean episodes:              609 (474 firms)
+  Right-censored:              198 (32.5%)
+  Completed (observed exit):   411
+  Person-period observations:  1449
+  Firms with multiple episodes: 120 (25.3%)
+
+=======================================================================
+DATA PREPARATION COMPLETE
+=======================================================================
+Objects available: df_ML, df_SML, gdp_growth,
+  baseline, alt_def, sml_ep, baseline_lc, strict_ep
+Each episode set contains: $episodes_all, $episodes_clean, $pp
+> source("article_analysis.R")
+=======================================================================
+ARTICLE ANALYSIS — ALL MANUSCRIPT NUMBERS
+=======================================================================
+
+=== TABLE 1: Sample Selection ===
+
+  Raw firm-years (APR):          35,416 (3,800 firms)
+  After exclusions:              28582 (2950 firms)
+  Medium and large subsample:    18183 (1816 firms)
+
+=== TABLE A1: Episode Construction ===
+
+  Distress episodes (750 firms):  1026
+  Left-censored (starting 2013): 417
+  Clean distress:                609
+  Right-censored (ongoing 2023): 198
+  Completed (observed exit):     411
+  Person-period observations:    1449
+
+=== TABLE A2: Financial Profile at Entry ===
+
+  Current Ratio:  N=609, Mean=0.78, Median=0.79, SD=0.30
+  Debt-to-Equity: N=554, Mean=5.78, Median=2.84, SD=8.58
+  ROA:            N=609, Mean=-0.036, Median=0.008, SD=0.164
+  Altman Z":      N=609, Mean=-0.15, Median=0.50, SD=2.33
+  Note: CR, DE, ROA are winsorised at 1st/99th percentiles.
+  DE missing: 55 episodes (negative or zero equity)
+
+=== TABLE 2: Ownership Distribution ===
+
+  All firms:
+    Private: 2504 (81%)
+    Socialistic: 133 (4%)
+    Cooperative: 99 (3%)
+    Mixed: 107 (3%)
+    Government: 249 (8%)
+    Total: 3092
+  Medium & Large:
+    Private: 1342 (80%)
+    Socialistic: 62 (4%)
+    Cooperative: 77 (5%)
+    Mixed: 53 (3%)
+    Government: 151 (9%)
+    Total: 1685
+
+=== TABLE 3: Empirical Hazard Rates ===
+
+Duration      At Risk      Exits  Hazard Rate  Survival Rate
+---------------------------------------------------------- 
+1                 609        230        37.8%          62.2%
+2                 311         81        26.0%          46.0%
+3                 196         44        22.4%          35.7%
+4                 126         29        23.0%          27.5%
+5                  83         15        18.1%          22.5%
+6                  48          5        10.4%          20.2%
+7+                 35          7        20.0%          16.1%
+
+=== TABLE 4: Baseline Hazard Model (cloglog) ===
+  Specification: event ~ log_t + Size + Sector + Z_entry + ROA_entry
+  (DE_entry excluded — 12% missing, p=0.438 when included)
+
+Variable            Coefficient   Clustered SE        Z    p-value
+---------------------------------------------------------------- 
+log_t                    -0.508          0.090    -5.62    < 0.001
+SizeLarge                -0.153          0.103    -1.48      0.139
+Z_entry                   0.129          0.064     2.00      0.046
+ROA_entry                 0.916          0.457     2.00      0.045
+
+  N = 1449 person-period obs from 609 episodes (411 events)
+  AIC = 1642.1
+  Sector FE joint LR test: chi2=34.84, df=14, p=0.002
+  D/E inclusion note: coef=-0.005, p=0.448 on n=1276
+
+=== Alternative Duration Specifications ===
+
+  LR constant vs log(t): chi2=38.63, p<0.001
+  Linear t: coef=-0.208, p<0.001, AIC=1640.8
+  Piecewise: early=-0.237 (p<0.001), late=-0.179 (p=0.010)
+  LR log(t) vs factor: chi2=3.07, p=0.546
+  Factor coefficients:
+    t_factor2: -0.388 (p=0.003)
+    t_factor3: -0.525 (p=0.002)
+    t_factor4: -0.447 (p=0.025)
+    t_factor5: -0.684 (p=0.011)
+    t_factor6+: -1.349 (p=0.000)
+
+=== TABLE 5: Sectoral Comparison ===
+
+  sector_type n_episodes median_dur mean_hazard
+1      Market        413          1       0.314
+2   Regulated         95          2       0.166
+
+  KM survival estimates (survfit):
+Call: survfit(formula = surv_obj ~ surv_sector$sector_type)
+
+                                    n events median 0.95LCL 0.95UCL
+surv_sector$sector_type=Market    413    293      2       2       2
+surv_sector$sector_type=Regulated  95     50      4       3       6
+
+  FOR MANUSCRIPT — KM medians: Market = 2 years, Regulated = 4 years
+  Raw episode medians (ignoring censoring): Regulated=2, Market=1
+  NOTE: Use KM medians for manuscript (they account for right-censoring)
+  Log-rank test: chi2=18.66, p<0.001
+
+  Sector binary: coef=-0.537, SE=0.150, p=0.000
+
+=== Individual Sector Hazards ===
+
+  Sector N_obs N_events Hazard
+1      H   141       23  0.163
+2      D    60       10  0.167
+3      E   101       17  0.168
+4      J    44        9  0.205
+5      M    43       12  0.279
+6      C   455      134  0.295
+7      G   312       94  0.301
+8      F   167       65  0.389
+9      A    50       20  0.400
+
+=== TABLE 6: Ownership Confounding ===
+
+Ownership by sector type (firms):
+   sector_type   Ownership     n  Pct
+1       Market     Private 10819 85.0
+2       Market Socialistic   443  3.5
+3       Market Cooperative   477  3.7
+4       Market       Mixed   327  2.6
+5       Market  Government   271  2.1
+6       Market        <NA>   391  3.1
+7    Regulated     Private   937 44.0
+8    Regulated Socialistic    70  3.3
+9    Regulated Cooperative    99  4.7
+10   Regulated       Mixed    55  2.6
+11   Regulated  Government   929 43.6
+12   Regulated        <NA>    39  1.8
+
+  No ownership control:  coef=-0.537, SE=0.150, p=0.000, n=1236
+  Ownership controls:    coef=-0.432, SE=0.159, p=0.006, n=1236
+  Private firms only:    coef=-0.462, SE=0.184, p=0.012, n=898
+  Attenuation: 19.6%
+  State ownership coef: -0.179, p=0.402
+
+=== TABLE 7: Robustness Tests ===
+
+  Cox PH: LR chi2=63.98, p<0.001; concordance=0.655
+  Schoenfeld global test: p=0.008
+
+Test                 Specification          Duration Coef.    p-value   n Episodes
+-------------------------------------------------------------------------------- 
+Primary              Cloglog, no D/E                -0.508    < 0.001          609
+Logit                Logit                          -0.599    < 0.001          609
+Cox PH               Cox PH                      see note*    < 0.001          609
+Alt distress         Neg ROA + High D/E             -0.306      0.014          378
+GDP                  + GDP growth                   -0.483    < 0.001          609
+Full SML             S+M+L firms                    -0.600    < 0.001          941
+Left-censored        Include 2013 starts            -0.352    < 0.001         1026
+Strict exit          2-year rule                    -0.622    < 0.001          609
+No Z_entry           Without Z_entry                -0.531    < 0.001          609
+D/E inclusion        Reduced sample                 -0.503    < 0.001          554
+
+=== Unobserved Heterogeneity Tests ===
+
+  Frailty variance (gamma, by sector): 0.069
+  Multi-episode firms: 120 (25.3% of 474)
+  Long repeaters (all eps >= 3 years): 6 (5.0% of multi-ep)
+
+=======================================================================
+VERIFICATION REPORT
+=======================================================================
+
+Table 4 (primary model):
+  log(t):    -0.508  (expect -0.508)
+  ClustSE:   0.090  (expect  0.090)
+  Large:     -0.153  (expect -0.153)
+  Z_entry:   0.129  (expect  0.129)
+  ROA_entry: 0.916  (expect  0.916)
+  N:         1449     (expect 1449)
+  Events:    411      (expect 411)
+  AIC:       1642.1  (expect 1642.1)
+
+Table 7 (robustness — log(t) coefficients):
+  Primary              actual=-0.508  expected=-0.508  [OK]
+  Logit                actual=-0.599  expected=-0.599  [OK]
+  Alt distress         actual=-0.306  expected=-0.306  [OK]
+  GDP                  actual=-0.483  expected=-0.483  [OK]
+  Full SML             actual=-0.600  expected=-0.600  [OK]
+  Left-censored        actual=-0.352  expected=-0.352  [OK]
+  Strict exit          actual=-0.622  expected=-0.622  [OK]
+  No Z_entry           actual=-0.531  expected=-0.531  [OK]
+  D/E inclusion        actual=-0.503  expected=-0.503  [OK]
+
+Other key numbers:
+  LR const vs log(t): 38.63  (expect 38.63)
+  Sector FE LR:       34.84  (expect 34.84)
+  Log-rank chi2:      18.66  (expect 18.66)
+  KM median Market:   2    (expect 2)
+  KM median Regulated:4    (expect 4)
+  Sector binary:      -0.537  (expect -0.537)
+  Cox LR chi2:        63.98  (expect 63.98)
+  Concordance:        0.655  (expect 0.655)
+  Schoenfeld p:       0.008  (expect 0.008)
+  Frailty variance:   0.069  (expect 0.069)
+
+=======================================================================
+Analysis completed: 2026-03-31 11:42:59.536458
+=======================================================================
+> source("figures_and_checks.R")
+=======================================================================
+FIGURES AND DIAGNOSTIC CHECKS
+=======================================================================
+
+--- Figure 1: Duration Distribution ---
+  Saved: Fig1_duration_distribution.png
+  Mean: 2.4, Median: 2, Max: 10, Total: 609 episodes
+
+--- Figure 2: Empirical Hazard Rates ---
+  Saved: Fig2_hazard_rates.png
+
+--- Figure 3: KM Survival by Sector Type ---
+  Saved: Fig3_KM_sector_type.png
+
+--- Figure 4: Sector-Specific Hazard Rates ---
+  Saved: Fig4_sector_hazards.png
+
+--- Diagnostic: Long Episodes (7+ years) ---
+
+  Episodes with duration >= 7 years: 35
+         mb start_year end_year duration   Size Sector right_censored     Z_entry     ROA_entry
+1  07226560       2014     2023       10 Medium      E           TRUE -4.10499191  2.907750e-04
+2  07609574       2014     2023       10 Medium      C           TRUE -0.87858761  6.531805e-03
+3  17264869       2014     2023       10 Medium      G           TRUE  0.24251074  1.304658e-02
+4  20438819       2014     2023       10  Large      G           TRUE -0.58856943 -1.464820e-01
+5  07205236       2015     2023        9 Medium      C           TRUE -0.42082480 -2.230581e-01
+6  07216009       2015     2023        9 Medium      D           TRUE -0.90718669  8.184547e-02
+7  07617003       2015     2023        9  Large      G           TRUE  1.06707732  5.220307e-02
+8  08056951       2015     2023        9 Medium      A           TRUE -0.46112580 -2.740312e-01
+9  17423851       2015     2023        9 Medium      F           TRUE -0.23875160  3.117481e-02
+10 17577646       2015     2023        9 Medium      H           TRUE -0.96261750 -2.869907e-01
+11 20038284       2015     2023        9 Medium      M           TRUE -9.87097790 -1.339670e-01
+12 20222786       2015     2023        9 Medium      G           TRUE -0.83748923 -6.745935e-02
+13 20363495       2015     2023        9  Large      C           TRUE -1.89659314 -1.808402e-03
+14 20713496       2015     2023        9 Medium      G           TRUE  0.83470614 -1.795672e-02
+15 29502447       2015     2023        9  Large      F           TRUE -0.05275150 -9.666811e-02
+16 06057292       2016     2023        8 Medium      M           TRUE  0.29564127  2.524490e-03
+17 06696023       2016     2023        8 Medium      G           TRUE  0.90779307  5.351257e-03
+18 07021747       2016     2023        8 Medium      J           TRUE -6.52605468 -1.785016e-01
+19 07279094       2016     2023        8 Medium      D           TRUE -5.05679235 -1.115279e-01
+20 07389574       2016     2023        8 Medium      E           TRUE  0.32907586  3.514754e-05
+21 17441531       2016     2023        8 Medium      D           TRUE -2.78844589 -8.215435e-02
+22 20734973       2016     2023        8  Large      H           TRUE -0.65576473  1.011261e-02
+23 06009972       2017     2023        7 Medium      H           TRUE -0.72419715  7.447439e-02
+24 07145837       2017     2023        7  Large      E           TRUE -2.15846436  8.096155e-05
+25 07154780       2017     2023        7 Medium      E           TRUE  0.96900549  2.706366e-03
+26 07157479       2014     2020        7 Medium      C          FALSE  0.45489058  7.680600e-03
+27 07160763       2017     2023        7 Medium      E           TRUE -3.42243248  1.374543e-02
+28 07264348       2016     2022        7  Large      C          FALSE  1.09512132  4.269102e-03
+29 07606036       2016     2022        7  Large      C          FALSE -0.41345519 -1.613022e-01
+30 08042586       2015     2021        7 Medium      C          FALSE  0.67506861  4.035470e-02
+31 08207259       2017     2023        7  Large      G           TRUE  0.82927676  3.954945e-03
+32 08652163       2015     2021        7  Large      G          FALSE  0.88129656  6.847820e-02
+33 08720100       2015     2021        7  Large      G          FALSE  0.36065504  6.426851e-02
+34 08751005       2014     2020        7  Large      C          FALSE  0.94378297  6.994374e-03
+35 20045523       2017     2023        7 Medium      G           TRUE  0.07437782  2.921990e-02
+
+--- Diagnostic: Recidivism ---
+
+  Completed episodes: 411
+  Re-enter after exactly 1 year out (gap=2): 74 (18.0%)
+
+--- Diagnostic: Z-Score Distribution in M+L Panel ---
+
+  Distress: 3513 (19.3%)
+  Grey: 3149 (17.3%)
+  Safe: 11510 (63.3%)
+
+--- Diagnostic: Multi-Episode Firms ---
+
+  1 episode(s): 354 firms
+  2 episode(s): 107 firms
+  3 episode(s): 11 firms
+  4 episode(s): 2 firms
+
+  Total firms: 474
+  Multi-episode: 120 (25.3%)
+
+--- Diagnostic: Small vs M+L Hazard at t=5 ---
+
+  size_group  N exits hazard
+1        M+L 83    15  0.181
+2      Small 54     4  0.074
+  (Used in Data section to justify small firm exclusion)
+
+=======================================================================
+FIGURES AND CHECKS COMPLETE
+Output directory: output/
+  Fig1_duration_distribution.png  (paper Figure 1)
+  Fig2_hazard_rates.png           (paper Figure 2)
+  Fig3_KM_sector_type.png         (paper Figure 3)
+  Fig4_sector_hazards.png         (paper Figure 4)
+=======================================================================
