@@ -188,7 +188,7 @@ for (i in 1:nrow(hazard_table)) {
 # =============================================================================
 cat("\n=== TABLE 4: Baseline Hazard Model (cloglog) ===\n")
 cat("  Specification: event ~ log_t + Size + Sector + Z_entry + ROA_entry\n")
-cat("  (DE_entry excluded — 12% missing, p=0.438 when included)\n\n")
+cat("  (DE_entry excluded — 12% missing, p=0.448 when included)\n\n")
 
 m_primary <- glm(
   event ~ log_t + Size + Sector + Z_entry + ROA_entry,
